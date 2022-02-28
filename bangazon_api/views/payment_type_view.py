@@ -7,7 +7,7 @@ from drf_yasg import openapi
 from bangazon_api.models import PaymentType
 from bangazon_api.serializers import (
     PaymentTypeSerializer, MessageSerializer, CreatePaymentType)
-
+from django.db.models import Q
 
 class PaymentTypeView(ViewSet):
     @swagger_auto_schema(responses={
@@ -18,7 +18,9 @@ class PaymentTypeView(ViewSet):
     })
     def list(self, request):
         """Get a list of payment types for the current user"""
+        user = request.auth.user
         payment_types = PaymentType.objects.all()
+        payment_types = payment_types.filter(Q(customer_id=user.id))
         serializer = PaymentTypeSerializer(payment_types, many=True)
         return Response(serializer.data)
 
@@ -40,8 +42,8 @@ class PaymentTypeView(ViewSet):
         try:
             payment_type = PaymentType.objects.create(
                 customer=request.auth.user,
-                merchant_name=request.data['acctNumber'],
-                acct_number=request.data['merchant']
+                merchant_name=request.data['merchant'],
+                acct_number=request.data['acctNumber']
             )
             serializer = PaymentTypeSerializer(payment_type)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
