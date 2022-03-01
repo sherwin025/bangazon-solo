@@ -25,6 +25,20 @@ class ProductTests(APITestCase):
 
         self.faker = Faker()
         self.faker.add_provider(faker_commerce.Provider)
+        
+        category = Category.objects.first()
+        
+        data = {
+            "name": self.faker.ecommerce_name(),
+            "price": random.randint(50, 1000),
+            "description": self.faker.paragraph(),
+            "quantity": random.randint(2, 20),
+            "location": random.choice(STATE_NAMES),
+            "imagePath": "",
+            "categoryId": category.id
+        }
+        
+        self.product = self.client.post('/api/products', data, format='json')
 
     def test_create_product(self):
         """
@@ -75,3 +89,9 @@ class ProductTests(APITestCase):
         response = self.client.get('/api/products')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), Product.objects.count())
+        
+    def test_delete_product(self):
+        paymenttype = self.client.delete(f'/api/products/{self.product.data["id"]}')
+        self.assertEqual(paymenttype.status_code, status.HTTP_204_NO_CONTENT)
+        
+    

@@ -1,6 +1,8 @@
 from django.contrib.auth.models import User
 from django.db.models import Count
+from bangazon_api import serializers
 from bangazon_api.models.order_product import OrderProduct
+from bangazon_api.serializers.like_serializer import LikeSerializer
 from rest_framework.viewsets import ViewSet
 from rest_framework.response import Response
 from rest_framework import status
@@ -9,7 +11,7 @@ from rest_framework.exceptions import ValidationError
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from bangazon_api.helpers import STATE_NAMES
-from bangazon_api.models import Product, Store, Category, Order, Rating, Recommendation
+from bangazon_api.models import Product, Store, Category, Order, Rating, Recommendation, Like
 from bangazon_api.serializers import (
     ProductSerializer, CreateProductSerializer, MessageSerializer,
     AddProductRatingSerializer, AddRemoveRecommendationSerializer)
@@ -17,6 +19,36 @@ from django.db.models import Q
 
 
 class ProductView(ViewSet):
+    @action(methods=['post'], detail=True)
+    def like(self,request, pk):
+        user = request.auth.user
+        product = Product.objects.get(pk=pk)
+        like = Like.objects.create(
+            user = user,
+            product = product
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    @action(methods=['delete'], detail=True)
+    def unlike(self,request, pk):
+        user = request.auth.user
+        product = Product.objects.get(pk=pk)
+        like = Like.objects.get(
+            user = user,
+            product = product
+        )
+        like.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    @action(methods=['get'], detail=False)
+    def liked(self, request):
+        user = request.auth.user
+        thelike = Like.objects.all()
+        like = thelike.filter(user=user)
+        serializer = LikeSerializer(like, many=True)
+        return Response(serializer.data)   
+    
+    
     @swagger_auto_schema(
         request_body=CreateProductSerializer,
         responses={
@@ -162,14 +194,22 @@ class ProductView(ViewSet):
     def list(self, request):
         """Get a list of all products"""
         products = Product.objects.all()
-
+        
+        min_price = request.query_params.get('min_price', None)
         number_sold = request.query_params.get('number_sold', None)
         category = request.query_params.get('category', None)
         order = request.query_params.get('order_by', None)
         direction = request.query_params.get('direction', None)
         name = request.query_params.get('name', None)
+        location = request.query_params.get('location', None)
 
-        if number_sold:
+        if location is not None:
+            products = products.filter(Q(location__contains=location))
+
+        if min_price is not None:
+            products = products.filter(price__gte=min_price)
+            
+        if number_sold is not None:
             products = products.annotate(
                 order_count=Count('orders', filter=~Q(orders__payment_type=None))
             ).filter(order_count__gte=number_sold)

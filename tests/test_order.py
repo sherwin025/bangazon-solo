@@ -1,3 +1,4 @@
+from bangazon_api.models.payment_type import PaymentType
 from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework.authtoken.models import Token
@@ -17,31 +18,56 @@ class OrderTests(APITestCase):
         self.token = Token.objects.get(user=self.user1)
 
         self.user2 = User.objects.filter(store=None).last()
-        product = Product.objects.get(pk=1)
+        self.product = Product.objects.get(pk=1)
 
-        self.order1 = Order.objects.create(
-            user=self.user1
-        )
+        # self.order1 = Order.objects.create(
+        #     user=self.user1
+        # )
 
-        self.order1.products.add(product)
+        # self.order1.products.add(product)
 
         self.order2 = Order.objects.create(
             user=self.user2
         )
 
-        self.order2.products.add(product)
+        self.order2.products.add(self.product)
 
         self.client.credentials(
             HTTP_AUTHORIZATION=f'Token {self.token.key}')
+        
+        self.payment = PaymentType.objects.create(
+            merchant_name="visa",
+            acct_number= 123412341234,
+            customer=self.user1
+        )
 
     def test_list_orders(self):
         """The orders list should return a list of orders for the logged in user"""
         response = self.client.get('/api/orders')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
+        self.assertEqual(len(response.data), 2)
 
-    def test_delete_order(self):
-        response = self.client.delete(f'/api/orders/{self.order1.id}')
+    # def test_delete_order(self):
+    #     response = self.client.delete(f'/api/orders/{self.order1.id}')
+    #     self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_add_product_to_order(self):
+        theorder = self.client.post(f'/api/products/{self.product.id}/add_to_order')
+        self.assertEqual(theorder.status_code, status.HTTP_201_CREATED)
+        
+    def test_add_payment(self):
+        theorder = self.client.get('/api/orders/current')
+        theorder.data['payment_type'] = self.payment.id
+        response = self.client.put(f'/api/orders/{theorder.data["id"]}/complete', theorder.data, format="json")
+        
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-
-    # TODO: Complete Order test
+        
+        anorder = Order.objects.get(pk=theorder.data['id'])
+        
+        self.assertEqual(anorder.payment_type, self.payment)
+        
+    def test_delete_payment_type(self):
+        paymenttype = self.client.delete(f'/api/payment-types/{self.payment.id}')
+        self.assertEqual(paymenttype.status_code, status.HTTP_204_NO_CONTENT)
+        
+        

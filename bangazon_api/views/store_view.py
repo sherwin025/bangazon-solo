@@ -1,8 +1,10 @@
+from bangazon_api.models.favorite import Favorite
 from rest_framework.viewsets import ViewSet
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from django.db.models import Q, Count
+from rest_framework.decorators import action
 
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
@@ -11,6 +13,28 @@ from bangazon_api.serializers import StoreSerializer, MessageSerializer, AddStor
 
 
 class StoreView(ViewSet):
+    @action(methods=['post'], detail=True)
+    def favorite(self, request,pk):
+        customer = request.auth.user
+        thestore = Store.objects.get(pk=pk)
+        favorite = Favorite.objects.create(
+            customer = customer,
+            store = thestore
+        )
+        return Response(favorite.__str__(), status=status.HTTP_201_CREATED)
+        
+    @action(methods=['delete'], detail=True)
+    def unfavorite(self, request,pk):
+        customer = request.auth.user
+        thestore = Store.objects.get(pk=pk)
+        favorite = Favorite.objects.get(
+            customer = customer,
+            store = thestore
+        )
+        favorite.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+        
+        
     @swagger_auto_schema(
         request_body=AddStoreSerializer(),
         responses={
