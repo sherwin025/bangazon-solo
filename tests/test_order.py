@@ -1,4 +1,5 @@
 from bangazon_api.models.payment_type import PaymentType
+from bangazon_api.models.rating import Rating
 from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework.authtoken.models import Token
@@ -70,4 +71,20 @@ class OrderTests(APITestCase):
         paymenttype = self.client.delete(f'/api/payment-types/{self.payment.id}')
         self.assertEqual(paymenttype.status_code, status.HTTP_204_NO_CONTENT)
         
+    def test_rate_and_average_rating(self):
+        product = self.client.get('/api/products/2')
+
+        ratings = len(product.data["ratings"])
         
+        rating = {
+            "customer": self.user1,
+            "product": Product.objects.get(pk=2),
+            "score": 4,
+            "review": "great product"
+        }
+        
+        response = self.client.post(f'/api/products/{product.data["id"]}/rate-product', rating)
+        
+        updatedproduct = self.client.get('/api/products/1')
+    
+        self.assertNotEqual(product.data["average_rating"], updatedproduct.data["average_rating"])

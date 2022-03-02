@@ -1,4 +1,5 @@
 import random
+from bangazon_api.models.rating import Rating
 import faker_commerce
 from faker import Faker
 from rest_framework import status
@@ -93,5 +94,3 @@ class ProductTests(APITestCase):
     def test_delete_product(self):
         paymenttype = self.client.delete(f'/api/products/{self.product.data["id"]}')
         self.assertEqual(paymenttype.status_code, status.HTTP_204_NO_CONTENT)
-        
-    
