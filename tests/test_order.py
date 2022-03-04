@@ -72,7 +72,7 @@ class OrderTests(APITestCase):
         self.assertEqual(paymenttype.status_code, status.HTTP_204_NO_CONTENT)
         
     def test_rate_and_average_rating(self):
-        product = self.client.get('/api/products/2')
+        product = self.client.get('/api/products/1')
 
         ratings = len(product.data["ratings"])
         
@@ -83,7 +83,7 @@ class OrderTests(APITestCase):
             "review": "great product"
         }
         
-        response = self.client.post(f'/api/products/{product.data["id"]}/rate-product', rating)
+        self.client.post(f'/api/products/{product.data["id"]}/rate-product', rating)
         
         updatedproduct = self.client.get('/api/products/1')
     
